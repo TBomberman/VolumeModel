@@ -19,7 +19,7 @@ if load_data:
     optAndNotify(data, labels)
     quit()
 
-csv_rows = dl.load_csv('Data/aggregatedOutput.csv')
+csv_rows = dl.load_csv('Data/aggregatedOutput5k.csv')
 # csv_rows = dl.load_csv('Data/Candles1HDec2014-May2018.csv')
 headers = csv_rows.pop(0)
 

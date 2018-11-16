@@ -26,6 +26,7 @@ patience = 5
 
 def do_optimize(nb_classes, data, labels, data_test=None, labels_test=None):
     n = len(labels)
+    print('samples', n)
     time_steps = len(data[0])
     d = data[0][0].size
     neuron_count = time_steps * d

@@ -5,8 +5,9 @@ csv_rows = dl.load_csv('Data/ES 12-18.Last.txt')
 
 aggregated_rows = []
 aggregated_rows.append(['counter', 'datetime', 'low', 'high', 'open', 'close', 'vol'])
+n_aggregated_tioks = 5000
 
-with open("aggregatedOutput.csv", "w") as f:
+with open("aggregatedOutput5k.csv", "w") as f:
     writer = csv.writer(f)
 
     counter = 0
@@ -17,7 +18,7 @@ with open("aggregatedOutput.csv", "w") as f:
         datetime = tokens[0]
         last = float(tokens[1])
         tick_vol = int(tokens[4])
-        if counter%100 == 1:
+        if counter%n_aggregated_tioks == 1:
             open = last
             low = last
             high = last
@@ -27,11 +28,11 @@ with open("aggregatedOutput.csv", "w") as f:
             low = last
         if last > high:
             high = last
-        if counter%100 == 0:
+        if counter%n_aggregated_tioks == 0:
             close = last
             row = [counter, datetime, low, high, open, close, vol]
             aggregated_rows.append(row)
-            if counter % 10000 == 0:
+            if counter % (10*n_aggregated_tioks) == 0:
                 print(row)
 
     writer.writerows(aggregated_rows)
