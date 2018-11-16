@@ -5,10 +5,12 @@ csv_rows = dl.load_csv('Data/ES 12-18.Last.txt')
 
 aggregated_rows = []
 aggregated_rows.append(['counter', 'datetime', 'low', 'high', 'open', 'close', 'vol'])
-n_aggregated_tioks = 5000
+n = 2.5
 
-with open("aggregatedOutput5k.csv", "w") as f:
-    writer = csv.writer(f)
+n_aggregated_tioks = 1000 * n
+
+with open("aggregatedOutput" + str(n) + "k.csv", "w") as file:
+    writer = csv.writer(file)
 
     counter = 0
     low, high, open, close, vol = 0,0,0,0,0
