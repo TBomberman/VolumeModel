@@ -28,8 +28,8 @@ if load_data:
     quit()
 
 for n in [5, 10, 16, 20]:
-for n in [25, 30, 35, 40, 50]:
-for n in [60, 70, 80, 90, 100]:
+# for n in [25, 30, 35, 40, 50]:
+# for n in [60, 70, 80, 90, 100]:
     filename = 'Data/aggregatedOutput' + str(n) + 'k.csv'
     csv_rows = dl.load_csv(filename)
     # csv_rows = dl.load_csv('Data/Candles1HDec2014-May2018.csv')
