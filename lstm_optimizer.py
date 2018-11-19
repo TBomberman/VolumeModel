@@ -11,6 +11,7 @@ import keras_enums as enums
 import random
 from sklearn.model_selection import train_test_split, KFold
 from helpers.callbacks import NEpochLogger
+from keras.layers.normalization import BatchNormalization
 
 # local variables
 dropout = 0.0
@@ -66,6 +67,7 @@ def do_optimize(nb_classes, data, labels, data_test=None, labels_test=None):
             model = Sequential()
             history = History()
             model.add(LSTM(neuron_count, input_shape=(time_steps, d), return_sequences=True))
+            model.add(BatchNormalization())
             model.add(Activation(activation_input))
             model.add(Dropout(dropout))
 
@@ -132,5 +134,6 @@ def add_lstm_dropout(count, neuron_count, model, activation):
             model.add(LSTM(neuron_count, return_sequences=False))
         else:
             model.add(LSTM(neuron_count, return_sequences=True))
+        model.add(BatchNormalization())
         model.add(Activation(activation))
         model.add(Dropout(dropout))
