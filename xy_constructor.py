@@ -27,7 +27,9 @@ if load_data:
     optAndNotify(data, labels)
     quit()
 
-for n in [1, 2, 2.5, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20]:
+# for n in [5, 10, 16, 20]:
+# for n in [25, 30, 35, 40, 50]:
+# for n in [60, 70, 80, 90, 100]:
     filename = 'Data/aggregatedOutput' + str(n) + 'k.csv'
     csv_rows = dl.load_csv(filename)
     # csv_rows = dl.load_csv('Data/Candles1HDec2014-May2018.csv')
@@ -51,7 +53,6 @@ for n in [1, 2, 2.5, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20]:
         pct_row.append(float(row[6]))
         pct_row.append(0.0) # for hv
         pct_row.append(0.0) # for ma
-        pct_row.append(0.0)  # for macd
         percentized.append(pct_row)
 
         # create labels
@@ -109,35 +110,9 @@ for n in [1, 2, 2.5, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20]:
             percentized[i, 5] = hv
             percentized[i, 6] = ma
 
-        # add macd
-        look_back12 = 12
-        look_back26 = 26
-        n = len(percentized)
-        working = np.zeros(n)
-        for i in range(0, n):
-            if i < look_back12:
-                ma12 = np.average(raw[0:i, 3])
-            if i < look_back26:
-                ma26 = np.average(raw[0:i, 3])
-            if i >= look_back12:
-                ma12 = np.average(raw[i - look_back12:i, 3])
-            if i >= look_back26:
-                ma26 = np.average(raw[i - look_back26:i, 3])
-            if i == 0:
-                ma12 = 0.0
-                ma26 = 0.0
-            working[i] = ma12 - ma26
-        mean = np.mean(working)
-        std = np.std(working)
-        percentized[:, 7] = [(x - mean) / (std*3) for x in percentized[:, 7]]
-
         # make it predictive
         labels = labels[1:]
         percentized = percentized[:-1]
-
-        # remove the first 26 rows that don't have the correct std because there wasn't enough historical data
-        labels = labels[look_back26 - 1:]
-        percentized = percentized[look_back26 - 1:]
 
         for i in range(0, 7):
             print(np.std(percentized[:, i]))
