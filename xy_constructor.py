@@ -52,7 +52,7 @@ for n in [5, 10, 16, 20]:
             raw_row.append(float(row[i]))
         pct_row.append(float(row[6]))
         pct_row.append(0.0) # for hv
-        pct_row.append(0.0) # for ma
+        # pct_row.append(0.0) # for ma
         # pct_row.append(0.0)  # for macd
         percentized.append(pct_row)
 
@@ -109,7 +109,7 @@ for n in [5, 10, 16, 20]:
             hv = min(hv, 1)
             hv = max(hv, -1)
             percentized[i, 5] = hv
-            percentized[i, 6] = ma
+            # percentized[i, 6] = ma
 
         # add macd
         # look_back12 = 12
@@ -141,7 +141,7 @@ for n in [5, 10, 16, 20]:
         # labels = labels[look_back26 - 1:]
         # percentized = percentized[look_back26 - 1:]
 
-        for i in range(0, 7):
+        for i in range(0, 6):
             print(np.std(percentized[:, i]))
 
         # batch it
