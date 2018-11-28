@@ -9,11 +9,11 @@ from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction = 0.45
 set_session(tf.Session(config=config))
+import math
 
 
 save_data = True
 load_data = False
-look_back = 32
 
 def optAndNotify(data, labels):
     # try:
@@ -27,7 +27,7 @@ if load_data:
     optAndNotify(data, labels)
     quit()
 
-for n in [5, 10, 16, 20]:
+for n in [1]:
 # for n in [25, 30, 35, 40, 50]:
 # for n in [60, 70, 80, 90, 100]:
     filename = 'Data/aggregatedOutput' + str(n) + 'k.csv'
@@ -51,9 +51,9 @@ for n in [5, 10, 16, 20]:
             pct_row.append(float(row[i])/float(last_row[i]))
             raw_row.append(float(row[i]))
         pct_row.append(float(row[6]))
-        pct_row.append(0.0) # for hv
-        # pct_row.append(0.0) # for ma
-        # pct_row.append(0.0)  # for macd
+        pct_row.append(0.0)  # for hv
+        pct_row.append(0.0)  # for ma
+        pct_row.append(0.0)  # for macd
         percentized.append(pct_row)
 
         # create labels
@@ -72,76 +72,77 @@ for n in [5, 10, 16, 20]:
     labels = np.asarray(labels)
     raw = np.asarray(raw)
 
-    # standardize the percents
-    pctmean = np.mean(percentized[:, :4])
-    pctstd = np.std(percentized[:, :4])
-    percentized[:, :4] = (percentized[:, :4] - pctmean) / (pctstd*3)
-
-    # standardize the log volume
-    percentized[:,4] = np.log(percentized[:,4])
-    mean = np.mean(percentized[:,4])
-    std = np.std(percentized[:,4])
-    percentized[:, 4] = (percentized[:,4] - mean) / (std*3)
-
     # for hyperparam in range (1,10):
     for hyperparam in [1]:
-        look_back = 10 * hyperparam
-        # look_back = 10
-        # add historical volatility, and ma
-        n = len(percentized)
-        for i in range(0, n):
-            std = 0.0
-            ma = 0.0
-            # less than look_back
-            if i == 0:
-                logstd = 0.0
-                ma = 0.0
-            elif i < look_back:
-                logstd = np.log(np.std(raw[0:i, 3]))
-                logstd = np.min(std, -1)
-                ma = np.average(raw[0:i, 3])
-                ma = (raw[i, 3]/ma - pctmean) / (pctstd*3)
-            else:
-                logstd = np.log(np.std(raw[i-look_back:i, 3]))
-                ma = np.average(raw[i-look_back:i, 3])
-                ma = (raw[i, 3]/ma - pctmean) / (pctstd*3)
-            hv = logstd / 3
+
+        look_back = 5 * hyperparam
+        n_percentized = len(percentized)
+        for i in range(n_percentized-1, -1, -1):
+            # standardize the percents
+            pct_mean = np.mean(percentized[i-look_back:i, :4])
+            pct_std = np.std(percentized[i-look_back:i, :4])
+            if pct_std == 0 or math.isnan(pct_std):
+                percentized[i, :4] = 0
+                percentized[i, 4] = 0
+                continue
+            percentized[i, :4] = (percentized[i, :4] - pct_mean) / (pct_std*3)
+
+            # standardize the log volume
+            vol = percentized[i, 4]
+            mean = np.mean(percentized[i-look_back:i, 4])
+            std = np.std(percentized[i-look_back:i, 4])
+            std_vol = (vol - mean) / (std*3)
+            percentized[i, 4] = std_vol
+
+            # add historical volatility
+            log_std = np.log(np.std(raw[i-look_back:i, 3]))
+            hv = log_std / 3
             hv = min(hv, 1)
             hv = max(hv, -1)
             percentized[i, 5] = hv
-            # percentized[i, 6] = ma
 
-        # add macd
-        # look_back12 = 12
-        # look_back26 = 26
-        # n = len(percentized)
-        # working = np.zeros(n)
-        # for i in range(0, n):
-        #     if i < look_back12:
-        #         ma12 = np.average(raw[0:i, 3])
-        #     if i < look_back26:
-        #         ma26 = np.average(raw[0:i, 3])
-        #     if i >= look_back12:
-        #         ma12 = np.average(raw[i - look_back12:i, 3])
-        #     if i >= look_back26:
-        #         ma26 = np.average(raw[i - look_back26:i, 3])
-        #     if i == 0:
-        #         ma12 = 0.0
-        #         ma26 = 0.0
-        #     working[i] = ma12 - ma26
-        # mean = np.mean(working)
-        # std = np.std(working)
-        # percentized[:, 7] = [(x - mean) / (std*3) for x in percentized[:, 7]]
+        look_back12 = 12
+        look_back26 = 26
+        ma_diff_working = np.zeros(n_percentized)
+        macd_working = np.zeros(n_percentized)
+        for i in range(0, n_percentized):
+            # add ma
+            first_ind = 0
+            if i > look_back:
+                first_ind = i - look_back
+            ma = np.average(raw[first_ind:i, 3])
+            ma_diff_working[i] = raw[i, 3] - ma
+            ma_diff_mean = np.mean(ma_diff_working[first_ind:i])
+            ma_diff_std = np.std(ma_diff_working[first_ind:i])
+            percentized[i, 6] = (ma_diff_working[i] - ma_diff_mean) / (ma_diff_std * 3)
+
+            # add macd
+            if i < look_back12:
+                ma12 = np.average(raw[0:i, 3])
+            if i < look_back26:
+                ma26 = np.average(raw[0:i, 3])
+            if i >= look_back12:
+                ma12 = np.average(raw[i - look_back12:i, 3])
+            if i >= look_back26:
+                ma26 = np.average(raw[i - look_back26:i, 3])
+            if i == 0:
+                ma12 = 0.0
+                ma26 = 0.0
+            macd_working[i] = ma12 - ma26
+            macd_mean = np.mean(macd_working[first_ind:i])
+            macd_std = np.std(macd_working[first_ind:i])
+            percentized[i, 7] = (macd_working[i] - macd_mean) / (macd_std*3)
 
         # make it predictive
         labels = labels[1:]
         percentized = percentized[:-1]
 
         # remove the first 26 rows that don't have the correct std because there wasn't enough historical data
-        # labels = labels[look_back26 - 1:]
-        # percentized = percentized[look_back26 - 1:]
+        first_index = max(look_back26, look_back)
+        labels = labels[first_index - 1:]
+        percentized = percentized[first_index - 1:]
 
-        for i in range(0, 6):
+        for i in range(0, 8):
             print(np.std(percentized[:, i]))
 
         # batch it
