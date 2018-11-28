@@ -5,40 +5,41 @@ def aggregateByTicks():
     csv_rows = dl.load_csv('Data/ES 12-18.Last.txt')
 
     aggregated_rows = []
-    aggregated_rows.append(['counter', 'datetime', 'low', 'high', 'open', 'close', 'vol'])
-    n = 100
 
-    n_aggregated_tioks = 1000 * n
+    for n in [3, 5, 6, 7]:
+        aggregated_rows.append(['counter', 'datetime', 'low', 'high', 'open', 'close', 'vol'])
+        n_aggregated_tioks = 1000 * n
 
-    with open("aggregatedOutput" + str(n) + "k.csv", "w") as file:
-        writer = csv.writer(file)
+        with open("aggregatedOutput" + str(n) + "k.csv", "w") as file:
+            writer = csv.writer(file)
 
-        counter = 0
-        low, high, open_, close, vol = 0,0,0,0,0
-        for row in csv_rows:
-            counter += 1
-            tokens = row[0].split(';')
-            datetime = tokens[0]
-            last = float(tokens[1])
-            tick_vol = int(tokens[4])
-            if counter%n_aggregated_tioks == 1:
-                open_ = last
-                low = last
-                high = last
-                vol = 0
-            vol += tick_vol
-            if last < low:
-                low = last
-            if last > high:
-                high = last
-            if counter%n_aggregated_tioks == 0:
-                close = last
-                row = [counter, datetime, low, high, open_, close, vol]
-                aggregated_rows.append(row)
-                if counter % (10*n_aggregated_tioks) == 0:
-                    print(row)
+            counter = 0
+            low, high, open_, close, vol = 0,0,0,0,0
+            for row in csv_rows:
+                counter += 1
+                tokens = row[0].split(';')
+                datetime = tokens[0]
+                last = float(tokens[1])
+                tick_vol = int(tokens[4])
+                if counter%n_aggregated_tioks == 1:
+                    open_ = last
+                    low = last
+                    high = last
+                    vol = 0
+                vol += tick_vol
+                if last < low:
+                    low = last
+                if last > high:
+                    high = last
+                if counter%n_aggregated_tioks == 0:
+                    close = last
+                    row = [counter, datetime, low, high, open_, close, vol]
+                    aggregated_rows.append(row)
+                    if counter % (10*n_aggregated_tioks) == 0:
+                        print(row)
 
-        writer.writerows(aggregated_rows)
+            writer.writerows(aggregated_rows)
+            aggregated_rows = []
 
 def aggregateByVolume():
     csv_rows = dl.load_csv('Data/ES 12-18.Last.txt')
