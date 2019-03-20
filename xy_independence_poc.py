@@ -56,6 +56,8 @@ def get_std_vol(history):
     vol, vol_history = get_float_index_history(history, 6)
     mean = np.mean(vol_history)
     std = np.std(vol_history)
+    if std == 0:
+        return math.inf
     std_vol = (vol - mean) / (std * 3)
     return std_vol
 

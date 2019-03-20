@@ -1,6 +1,6 @@
 import numpy as np
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Flatten
+from keras.models import Sequential, Model
+from keras.layers import Dense, Dropout, Activation, Flatten, RepeatVector, Permute, merge, Input, Lambda
 from keras.layers.recurrent import LSTM
 from keras.utils import np_utils
 from keras.callbacks import History, EarlyStopping
@@ -12,6 +12,7 @@ import random
 from sklearn.model_selection import train_test_split, KFold
 from helpers.callbacks import NEpochLogger
 from keras.layers.normalization import BatchNormalization
+import keras.backend as K
 
 # local variables
 dropout = 0.0
@@ -64,17 +65,19 @@ def do_optimize(nb_classes, data, labels, data_test=None, labels_test=None):
             print('Patience', patience)
             out_epoch = NEpochLogger(display=5)
 
-            model = Sequential()
             history = History()
-            model.add(LSTM(neuron_count, input_shape=(time_steps, d), return_sequences=True))
-            model.add(BatchNormalization())
-            model.add(Activation(activation_input))
-            model.add(Dropout(dropout))
+            net_input = Input(shape=(time_steps, d), name='net_input')
+            activations = LSTM(neuron_count, input_shape=(time_steps, d), return_sequences=True)(net_input)
+            attention = Dense(1, activation='tanh')(activations)
+            attention = Flatten()(attention)
+            attention = Activation('softmax')(attention)
+            attention = RepeatVector(neuron_count)(attention)
+            attention = Permute([2, 1])(attention)
+            sent_representation = merge([activations, attention], mode='mul')
+            sent_representation = Lambda(lambda xin: K.sum(xin,
+            probabilities = Dense(2, activation='softmax')(sent_representation)
+            model = Model(input=[net_input], output=probabilities)
 
-            add_lstm_dropout(hidden_layer_count, neuron_count, model, activation_hidden)
-
-            model.add(Dense(nb_classes))
-            model.add(Activation(activation_output))
             # model.summary()
 
             model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
@@ -87,9 +90,12 @@ def do_optimize(nb_classes, data, labels, data_test=None, labels_test=None):
             print('Test score:', score[0])
             print('Test accuracy:', score[1])
 
-            y_score_train = model.predict_proba(X_train)
-            # y_score_test = model.predict_proba(X_test)
-            y_score_val = model.predict_proba(X_val)
+            y_score_train = model.predict(X_train)
+            # y_score_test = model.predict(X_test)
+            y_score_val = model.predict(X_val)
+
+            if np.isnan(y_score_train).any():
+                continue
 
             if nb_classes > 1:
                 train_stats = all_stats(y_train[:, 1], y_score_train[:, 1])
@@ -128,12 +134,39 @@ def do_optimize(nb_classes, data, labels, data_test=None, labels_test=None):
     avg_auc = sum_auc / split_num
     print("final auc", avg_auc)
 
-def add_lstm_dropout(count, neuron_count, model, activation):
+def add_lstm_dropout(count, neuron_count, model, activation, time_steps, d):
     for x in range(0, count):
+        net_input = Input(shape=(time_steps, d), name='net_input')
+        activations = None
         if x == count - 1:
-            model.add(LSTM(neuron_count, return_sequences=False))
+            activations = LSTM(neuron_count, return_sequences=False)(net_input)
         else:
-            model.add(LSTM(neuron_count, return_sequences=True))
+            activations = LSTM(neuron_count, return_sequences=True)(net_input)
+
+        attention = Dense(1, activation='tanh')(activations)
+        attention = Flatten()(attention)
+        attention = Activation('softmax')(attention)
+        attention = RepeatVector(neuron_count)(attention)
+        attention = Permute([2, 1])(attention)
+        sent_representation = merge([activations, attention], mode='mul')
+        model.add(sent_representation)
         model.add(BatchNormalization())
         model.add(Activation(activation))
         model.add(Dropout(dropout))
+
+
+def get_lstm_attention(count, neuron_count, sent_representation):
+    for x in range(0, count):
+        activations = None
+        if x == count - 1:
+            activations = LSTM(neuron_count, return_sequences=False)(sent_representation)
+        else:
+            activations = LSTM(neuron_count, return_sequences=True)(sent_representation)
+
+        attention = Dense(1, activation='tanh')(activations)
+        attention = Flatten()(attention)
+        attention = Activation('softmax')(attention)
+        attention = RepeatVector(neuron_count)(attention)
+        attention = Permute([2, 1])(attention)
+        sent_representation = merge([activations, attention], mode='mul')
+        return Lambda(lambda xin: K.sum(xin, axis=-2), output_shape=(neuron_count,))(sent_representation)
