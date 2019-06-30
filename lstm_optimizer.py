@@ -25,7 +25,7 @@ patience = 5
 # np.random.seed(1337)
 # random.seed(1337)
 
-def do_optimize(nb_classes, data, labels, data_test=None, labels_test=None):
+def do_optimize(nb_classes, data, labels, next_prices, data_test=None, labels_test=None):
     n = len(labels)
     print('samples', n)
     time_steps = len(data[0])
@@ -38,6 +38,7 @@ def do_optimize(nb_classes, data, labels, data_test=None, labels_test=None):
     test_size = int((1 - train_percentage) * n)
 
     sum_auc = 0
+    sum_profits = 0
     n_splits = 5
     split_num = 0
     kf = KFold(n_splits=n_splits, shuffle=True)
@@ -47,8 +48,10 @@ def do_optimize(nb_classes, data, labels, data_test=None, labels_test=None):
         y_train = labels[train_index]
         X_test = data[test_index]
         y_test = labels[test_index]
+        next_prices_test = next_prices[test_index]
 
-        X_val, X_test, y_val, y_test = train_test_split(X_test, y_test, train_size=0.5, test_size=0.5, shuffle=True)
+        X_val, X_test, y_val, y_test, np_val, np_test = \
+            train_test_split(X_test, y_test, next_prices_test, train_size=0.5, test_size=0.5, shuffle=True)
 
         # for hyperparam in range(0, 10):
         for hyperparam in [1]:
@@ -103,9 +106,15 @@ def do_optimize(nb_classes, data, labels, data_test=None, labels_test=None):
             sum_auc += val_stats[0]
             print_out = 'Hidden layers: %s, Neurons per layer: %s, Hyperparam: %s' % (hidden_layer_count + 1, neuron_count, hyperparam)
             print(print_out)
+            print('Columns | AUC | Recall | Specificity | Number of Samples | Precision | Max F Cutoff | Max F score')
             print('All stats train:', ['{:6.2f}'.format(val) for val in train_stats])
             # print('All stats test:', ['{:6.2f}'.format(val) for val in test_stats])
             print('All stats val:', ['{:6.2f}'.format(val) for val in val_stats])
+
+            profits, count = calculate_profit(y_score_val, np_val)
+            sum_profits += profits
+            print("profit", profits, "trade count", count)
+
             # print(history.history.keys())
             # summarize history for loss
 
@@ -125,8 +134,11 @@ def do_optimize(nb_classes, data, labels, data_test=None, labels_test=None):
             #
             # plt.show()
         print("running auc", sum_auc / split_num, str(split_num))
+        print("running profit", sum_profits / split_num, str(split_num))
     avg_auc = sum_auc / split_num
-    print("final auc", avg_auc)
+    avg_profit = sum_profits / split_num
+    print("final auc", avg_auc, "profit", avg_profit)
+
 
 def add_lstm_dropout(count, neuron_count, model, activation):
     for x in range(0, count):
@@ -137,3 +149,19 @@ def add_lstm_dropout(count, neuron_count, model, activation):
         model.add(BatchNormalization())
         model.add(Activation(activation))
         model.add(Dropout(dropout))
+
+
+def calculate_profit(predictions, prices):
+    cutoff = 0.9
+    profit = 0
+    trade_count = 0
+    for x in range(0, len(predictions)):
+        pct_change = (prices[x][2] / prices[x][1]) - 1
+        if predictions[x][1] > cutoff:  # buy
+            profit += pct_change
+            trade_count += 1
+        if predictions[x][0] > cutoff:  # sell
+            profit -= pct_change
+            trade_count += 1
+    return profit, trade_count
+

@@ -14,9 +14,10 @@ import math
 look_back12 = 12
 look_back26 = 26
 
-def optAndNotify(data, labels):
+
+def optAndNotify(data, labels, next_prices):
     # try:
-    do_optimize(2, data, labels)
+    do_optimize(2, data, labels, next_prices)
     # finally:
     #     notify("volume model")
 
@@ -35,7 +36,7 @@ def get_percentized_row(history):
         curr_row = history[i]
         pct_row = []
         for j in range(2, 6):
-            pct_row.append(float(curr_row[j]) / float(last_row[j]))
+            pct_row.append(float(curr_row[j]))  # / float(last_row[j]))
         pct_rows.append(pct_row)
     pct_rows = np.asarray(pct_rows)
     pct_mean = np.mean(pct_rows)
@@ -142,6 +143,7 @@ def process_file(aggregation_count_in_thousands, hyperparam):
     csv_rows.pop(0)
     data = []
     labels = []
+    next_prices = []
     stats_look_back = 5 * hyperparam
     batch_size = 2 ** 5
     history_size = batch_size + max(stats_look_back*2, look_back26 + stats_look_back) + 1
@@ -154,20 +156,22 @@ def process_file(aggregation_count_in_thousands, hyperparam):
         data.append(features_3d)
         label = get_label(csv_rows[i], csv_rows[i + 1])
         labels.append(label)
+        next_prices.append([int(csv_rows[i][0]), float(csv_rows[i][5]), float(csv_rows[i + 1][5])])
 
     data = np.asarray(data, dtype='float16')
     labels = np.asarray(labels, dtype='float16')
+    next_prices = np.asarray(next_prices)
     for i in range(0, 8):
         print(np.std(data[:, :, i]))
-    return data, labels
+    return data, labels, next_prices
 
 
 def main():
     for aggregation_count_in_thousands in [10]:
         for hyperparam in [2]:
-            data, labels = process_file(aggregation_count_in_thousands, hyperparam)
+            data, labels, next_prices = process_file(aggregation_count_in_thousands, hyperparam)
             print('xy hyperparam', hyperparam)
-            optAndNotify(data, labels)
+            optAndNotify(data, labels, next_prices)
     return
 
 
