@@ -12,6 +12,7 @@ import random
 from sklearn.model_selection import train_test_split, KFold
 from helpers.callbacks import NEpochLogger
 from keras.layers.normalization import BatchNormalization
+from helpers.plot_roc import plot_roc
 
 # local variables
 dropout = 0.0
@@ -93,6 +94,7 @@ def do_optimize(nb_classes, data, labels, next_prices, data_test=None, labels_te
             y_score_train = model.predict_proba(X_train)
             # y_score_test = model.predict_proba(X_test)
             y_score_val = model.predict_proba(X_val)
+            plot_roc(y_val[:, 1], y_score_val[:, 1])
 
             if nb_classes > 1:
                 train_stats = all_stats(y_train[:, 1], y_score_train[:, 1])
